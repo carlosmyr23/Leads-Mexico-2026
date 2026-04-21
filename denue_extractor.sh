@@ -1,46 +1,33 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 ENV_PATH="venv_leads"
-SCRIPT="denue_leads_extractor.py"
 LOG_DIR="logs"
-
 mkdir -p "$LOG_DIR"
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-LOG_FILE="$LOG_DIR/run_$TIMESTAMP.log"
+LOG_FILE="$LOG_DIR/pipeline_$TIMESTAMP.log"
 
-echo "🚀 Ejecutando con log en $LOG_FILE"
+echo "🚀 Ejecutando pipeline de BI. Log: $LOG_FILE"
 
-# Validar entorno
 if [ ! -d "$ENV_PATH" ]; then
-    echo "❌ Entorno no encontrado: $ENV_PATH"
-    exit 1
+  echo "❌ Entorno no encontrado: $ENV_PATH"
+  echo "Ejecuta primero: ./install_leads.sh"
+  exit 1
 fi
 
-# Validar script
-if [ ! -f "$SCRIPT" ]; then
-    echo "❌ Script no encontrado: $SCRIPT"
-    exit 1
-fi
-
-# Activar entorno
+# shellcheck disable=SC1090
 source "$ENV_PATH/bin/activate"
 
-# Ejecutar script con log (stdout + stderr)
-python "$SCRIPT" 2>&1 | tee "$LOG_FILE"
-
-# Guardar exit code real del script Python
+python scripts/run_bi_pipeline.py 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
-# Desactivar entorno
-deactivate
+deactivate || true
 
-# Validar ejecución
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ Error en ejecución. Revisa log: $LOG_FILE"
-    exit $EXIT_CODE
+  echo "❌ Error en pipeline. Revisa: $LOG_FILE"
+  exit $EXIT_CODE
 fi
 
-echo "✅ Proceso terminado correctamente"
+echo "✅ Pipeline finalizado"
