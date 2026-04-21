@@ -1,52 +1,41 @@
 #!/usr/bin/env bash
 
-set -e  # detener si algo falla
+set -euo pipefail
 
-echo "🚀 Creando entorno virtual..."
-
-# Nombre del entorno
 ENV_NAME="venv_leads"
+PYTHON_BIN="python3"
 
-# Crear entorno
-python3 -m venv $ENV_NAME
+echo "🚀 Instalador automático para Debian/Ubuntu"
 
-echo "✅ Entorno creado: $ENV_NAME"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  echo "📦 python3 no encontrado. Instalando dependencias del sistema..."
+  sudo apt-get update
+  sudo apt-get install -y python3 python3-venv python3-pip build-essential
+fi
 
-# Activar entorno
-echo "⚙️ Activando entorno..."
-source $ENV_NAME/bin/activate
+if [ ! -d "$ENV_NAME" ]; then
+  echo "🧪 Creando entorno virtual: $ENV_NAME"
+  "$PYTHON_BIN" -m venv "$ENV_NAME"
+else
+  echo "ℹ️ El entorno $ENV_NAME ya existe. Se reutilizará."
+fi
 
-# Actualizar pip
-echo "⬆️ Actualizando pip..."
-pip install --upgrade pip
+# shellcheck disable=SC1090
+source "$ENV_NAME/bin/activate"
 
-# Instalar dependencias
-echo "📦 Instalando dependencias..."
-pip install requests pandas tqdm
+python -m pip install --upgrade pip
 
-echo "📝 Generando requirements.txt..."
-pip freeze > requirements.txt
+if [ -f requirements.txt ]; then
+  echo "📦 Instalando dependencias desde requirements.txt"
+  pip install -r requirements.txt
+else
+  echo "📦 requirements.txt no existe, instalando paquete base"
+  pip install pandas numpy requests tqdm openpyxl
+fi
 
-echo "📁 Creando estructura base..."
-mkdir -p app data logs
+mkdir -p app scripts data/raw data/processed logs
 
-# Crear archivo base de script
-cat <<EOL > app/main.py
-import requests
-import pandas as pd
-import time
-import json
-import os
-from datetime import datetime
-from tqdm import tqdm
-
-print("✅ Entorno listo para trabajar")
-EOL
-
-echo "🙈 Configurando .gitignore..."
-echo -e "venv/\n__pycache__/\n*.pyc\n.env\nlogs/" > .gitignore
-
-echo ""
-echo "🎯 SETUP COMPLETO"
-echo "Activa el entorno con:"
-echo "source $ENV_NAME/bin/activate"
+echo "✅ Instalación terminada"
+echo "Siguiente paso:"
+echo "  source $ENV_NAME/bin/activate"
+echo "  python scripts/run_bi_pipeline.py"
